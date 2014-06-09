@@ -1,0 +1,11 @@
+development:
+  adapter: postgresql
+  encoding: unicode
+  database: associations_development
+  pool: 5
+
+test:
+  adapter: postgresql
+  encoding: unicode
+  database: associations_test
+  pool: 5
