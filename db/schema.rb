@@ -19,9 +19,11 @@ ActiveRecord::Schema.define(version: 20140609215153) do
 
   create_table "categories", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "name"
+    t.uuid     "parent_id"
     t.datetime "created_at"
     t.datetime "updated_at"
     t.integer  "legacy_id"
+    t.integer  "legacy_parent_id"
   end
 
   create_table "posts", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
@@ -37,6 +39,18 @@ ActiveRecord::Schema.define(version: 20140609215153) do
 
   add_index "posts", ["category_id"], name: "index_posts_on_category_id", using: :btree
   add_index "posts", ["user_id"], name: "index_posts_on_user_id", using: :btree
+
+  create_table "tags", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
+    t.string   "name"
+    t.string   "taggable_id",        limit: 36
+    t.string   "taggable_type"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.integer  "legacy_taggable_id"
+    t.integer  "legacy_id"
+  end
+
+  add_index "tags", ["taggable_id", "taggable_type"], name: "index_tags_on_taggable_id_and_taggable_type", using: :btree
 
   create_table "users", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "email"

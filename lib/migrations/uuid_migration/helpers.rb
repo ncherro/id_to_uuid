@@ -5,7 +5,10 @@ module Migrations
         # make sure all classes (models) are loaded in memory
         Rails.application.eager_load!
 
-        # this will hold the models we are going to change
+        # stores queries to run before everything else
+        base_queries = []
+
+        # stores the models we are going to change
         models_to_convert = []
 
         # store a reference to converted parent tables - prevents duplicate
@@ -20,7 +23,6 @@ module Migrations
         all_models.each do |model|
           table_name = model.table_name
           pk = model.primary_key
-
           results = execute <<-SQL
             SELECT data_type
             FROM information_schema.columns
@@ -62,7 +64,56 @@ module Migrations
         # reference a model we are going to convert
         all_models.each do |model|
           model.reflect_on_all_associations(:belongs_to).each do |association|
-            if association.options[:class_name]
+            if association.options[:polymorphic]
+              # 1. convert the polymorphic _id column name to a uuid-/ id-friendly string
+              child_table_name = association.active_record.table_name
+              fk_id = "#{association.name}_id".to_sym
+              fk_type = "#{association.name}_type".to_sym
+
+              next if child_fks_converted.include?("#{child_table_name}.#{legacy_prefix}_#{fk_id}")
+
+              base_queries << <<-SQL
+                ALTER TABLE #{child_table_name}
+                ADD COLUMN #{legacy_prefix}_#{fk_id} integer
+              SQL
+              base_queries << <<-SQL
+                UPDATE #{child_table_name}
+                SET #{legacy_prefix}_#{fk_id} = #{fk_id}
+              SQL
+              base_queries << <<-SQL
+                ALTER TABLE #{child_table_name}
+                ALTER COLUMN #{fk_id} SET DATA TYPE character varying(36) USING(NULL)
+              SQL
+
+              # 2. get a list of 'has_many's that reference this polymorphic
+              # association
+              pm_parent_associations = []
+              all_models.each do |pm_model|
+                pm_parent_associations += pm_model.reflect_on_all_associations(:has_many).select do |pm_association|
+                  pm_association.options[:as] == association.name
+                end
+              end
+
+              pm_parent_associations.each do |pm_association|
+                parent_models_to_convert = models_to_convert.select do |item|
+                  item[:model] == pm_association.active_record
+                end
+                parent_models_to_convert.each do |parent_model|
+                  parent_model[:sql] << <<-SQL
+                    UPDATE #{child_table_name} AS c
+                    SET #{fk_id} = p.#{parent_model[:model].primary_key}
+                    FROM #{parent_model[:model].table_name} AS p
+                    WHERE c.#{legacy_prefix}_#{fk_id} = p.#{legacy_prefix}_#{parent_model[:model].primary_key}
+                    AND c.#{fk_type} = '#{parent_model[:model].name}'
+                  SQL
+                end
+              end
+
+              child_fks_converted << "#{child_table_name}.#{legacy_prefix}_#{fk_id}"
+
+              # skip onto the next model
+              next
+            elsif association.options[:class_name]
               parent_model = association.options[:class_name].constantize
             else
               parent_model = association.name.to_s.classify.to_s.constantize
@@ -114,12 +165,15 @@ module Migrations
         end
 
         # now loop over our sql statements and execute them
-        sql = []
+        sql = [] + base_queries
         models_to_convert.map { |item| sql += item[:sql] if item[:sql].any? }
         sql.map { |query| execute query }
       end
 
       def convert_all_uuids_to_ids(legacy_prefix: 'legacy')
+        # until this is set up...
+        raise ActiveRecord::IrreversibleMigration
+
         # make sure all classes (models) are loaded in memory
         Rails.application.eager_load!
 
@@ -142,7 +196,7 @@ module Migrations
 
       private
       def all_models
-        ActiveRecord::Base.descendants.select do |model|
+        @all_models ||= ActiveRecord::Base.descendants.select do |model|
           model != ActiveRecord::SchemaMigration
         end
       end
