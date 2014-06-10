@@ -30,7 +30,7 @@ categories = Category.create([
   }
 ])
 
-posts = Post.create([
+Post.create([
   {
     category: categories.sample,
     user: users.sample
@@ -45,7 +45,7 @@ posts = Post.create([
   },
 ])
 
-news_posts = Posts::News.create([
+Posts::News.create([
   {
     category: categories.sample,
     user: users.sample
