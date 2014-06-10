@@ -11,52 +11,62 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140609215026) do
+ActiveRecord::Schema.define(version: 20140609215153) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "uuid-ossp"
 
-  create_table "categories", force: true do |t|
+  create_table "categories", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "name"
-    t.integer  "parent_id"
+    t.uuid     "parent_id"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "legacy_id"
+    t.integer  "legacy_parent_id"
   end
 
-  create_table "posts", force: true do |t|
-    t.integer  "category_id"
-    t.integer  "user_id"
+  create_table "posts", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
+    t.uuid     "category_id"
+    t.uuid     "user_id"
     t.string   "type"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "legacy_category_id"
+    t.integer  "legacy_id"
+    t.integer  "legacy_user_id"
   end
 
   add_index "posts", ["category_id"], name: "index_posts_on_category_id", using: :btree
   add_index "posts", ["user_id"], name: "index_posts_on_user_id", using: :btree
 
-  create_table "taggings", force: true do |t|
-    t.integer  "taggable_id"
+  create_table "taggings", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
+    t.string   "taggable_id",        limit: 36
     t.string   "taggable_type"
-    t.integer  "tag_id"
+    t.uuid     "tag_id"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "legacy_taggable_id"
+    t.integer  "legacy_tag_id"
+    t.integer  "legacy_id"
   end
 
   add_index "taggings", ["tag_id"], name: "index_taggings_on_tag_id", using: :btree
   add_index "taggings", ["taggable_id", "taggable_type"], name: "index_taggings_on_taggable_id_and_taggable_type", using: :btree
 
-  create_table "tags", force: true do |t|
+  create_table "tags", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "name"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "legacy_id"
   end
 
-  create_table "users", force: true do |t|
+  create_table "users", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "email"
     t.string   "name"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "legacy_id"
   end
 
 end
