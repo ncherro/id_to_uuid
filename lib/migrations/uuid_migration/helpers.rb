@@ -27,15 +27,16 @@ module Migrations
           data_type = get_data_type(table_name, pk)
 
           if data_type && data_type == 'integer'
+            legacy_pk = "#{legacy_prefix}_#{pk}"
             # set up our queries
             sql = []
             unless parent_tables_converted.include?(table_name)
               sql << <<-SQL
               ALTER TABLE #{table_name}
-              ADD COLUMN #{legacy_prefix}_#{pk} integer
+              ADD COLUMN #{legacy_pk} integer
               SQL
               sql << <<-SQL
-              UPDATE #{table_name} SET #{legacy_prefix}_#{pk} = #{pk}
+              UPDATE #{table_name} SET #{legacy_pk} = #{pk}
               SQL
               sql << <<-SQL
               ALTER TABLE #{table_name}
@@ -64,17 +65,19 @@ module Migrations
               # convert the polymorphic _id column name to a uuid-/ id-friendly string
               child_table_name = association.active_record.table_name
               fk_id = "#{association.name}_id".to_sym
-              fk_type = "#{association.name}_type".to_sym
+              legacy_fk_id = "#{legacy_prefix}_#{fk_id}"
 
-              next if child_fks_converted.include?("#{child_table_name}.#{legacy_prefix}_#{fk_id}")
+              next if child_fks_converted.include?("#{child_table_name}.#{legacy_fk_id}")
+
+              fk_type = "#{association.name}_type".to_sym
 
               base_queries << <<-SQL
                 ALTER TABLE #{child_table_name}
-                ADD COLUMN #{legacy_prefix}_#{fk_id} integer
+                ADD COLUMN #{legacy_fk_id} integer
               SQL
               base_queries << <<-SQL
                 UPDATE #{child_table_name}
-                SET #{legacy_prefix}_#{fk_id} = #{fk_id}
+                SET #{legacy_fk_id} = #{fk_id}
               SQL
               base_queries << <<-SQL
                 ALTER TABLE #{child_table_name}
@@ -99,7 +102,7 @@ module Migrations
                     UPDATE #{child_table_name} AS c
                     SET #{fk_id} = p.#{parent_model[:model].primary_key}
                     FROM #{parent_model[:model].table_name} AS p
-                    WHERE c.#{legacy_prefix}_#{fk_id} = p.#{legacy_prefix}_#{parent_model[:model].primary_key}
+                    WHERE c.#{legacy_fk_id} = p.#{legacy_prefix}_#{parent_model[:model].primary_key}
                     AND c.#{fk_type} = '#{parent_model[:model].name}'
                   SQL
                 end
@@ -119,18 +122,19 @@ module Migrations
             end
             children.each do |match|
               fk = association.foreign_key
+              legacy_fk = "#{legacy_prefix}_#{fk}"
               match[:children] << {
                 model: model,
                 foreign_key: fk
               }
               child_table_name = model.table_name
-              unless child_fks_converted.include?("#{child_table_name}.#{legacy_prefix}_#{fk}")
+              unless child_fks_converted.include?("#{child_table_name}.#{legacy_fk}")
                 match[:sql] << <<-SQL
                   ALTER TABLE #{child_table_name}
                   ADD COLUMN #{legacy_prefix}_#{fk} integer
                 SQL
                 match[:sql] << <<-SQL
-                  UPDATE #{child_table_name} SET #{legacy_prefix}_#{fk} = #{fk}
+                  UPDATE #{child_table_name} SET #{legacy_fk} = #{fk}
                 SQL
                 match[:sql] << <<-SQL
                   ALTER TABLE #{child_table_name}
@@ -140,9 +144,9 @@ module Migrations
                   UPDATE #{child_table_name} AS c
                   SET #{fk} = p.#{parent_model.primary_key}
                   FROM #{parent_model.table_name} AS p
-                  WHERE c.#{legacy_prefix}_#{fk} = p.#{legacy_prefix}_#{parent_model.primary_key}
+                  WHERE c.#{legacy_fk} = p.#{legacy_prefix}_#{parent_model.primary_key}
                 SQL
-                child_fks_converted << "#{child_table_name}.#{legacy_prefix}_#{fk}"
+                child_fks_converted << "#{child_table_name}.#{legacy_fk}"
               end
             end
           end
