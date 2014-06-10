@@ -40,17 +40,26 @@ ActiveRecord::Schema.define(version: 20140609215153) do
   add_index "posts", ["category_id"], name: "index_posts_on_category_id", using: :btree
   add_index "posts", ["user_id"], name: "index_posts_on_user_id", using: :btree
 
-  create_table "tags", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
-    t.string   "name"
+  create_table "taggings", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "taggable_id",        limit: 36
     t.string   "taggable_type"
+    t.uuid     "tag_id"
     t.datetime "created_at"
     t.datetime "updated_at"
     t.integer  "legacy_taggable_id"
+    t.integer  "legacy_tag_id"
     t.integer  "legacy_id"
   end
 
-  add_index "tags", ["taggable_id", "taggable_type"], name: "index_tags_on_taggable_id_and_taggable_type", using: :btree
+  add_index "taggings", ["tag_id"], name: "index_taggings_on_tag_id", using: :btree
+  add_index "taggings", ["taggable_id", "taggable_type"], name: "index_taggings_on_taggable_id_and_taggable_type", using: :btree
+
+  create_table "tags", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
+    t.string   "name"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.integer  "legacy_id"
+  end
 
   create_table "users", id: :uuid, default: "uuid_generate_v4()", force: true do |t|
     t.string   "email"

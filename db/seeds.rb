@@ -5,3 +5,73 @@
 #
 #   cities = City.create([{ name: 'Chicago' }, { name: 'Copenhagen' }])
 #   Mayor.create(name: 'Emanuel', city: cities.first)
+#
+
+users = User.create([
+  {
+    email: 'foo@bar.com',
+    name: 'bar'
+  },
+  {
+    email: 'bar@bar.com',
+    name: 'bar'
+  },
+])
+
+categories = Category.create([
+  {
+    name: 'foo'
+  },
+  {
+    name: 'bar'
+  },
+  {
+    name: 'baz'
+  }
+])
+
+posts = Post.create([
+  {
+    category: categories.sample,
+    user: users.sample
+  },
+  {
+    category: categories.sample,
+    user: users.sample
+  },
+  {
+    category: categories.sample,
+    user: users.sample
+  },
+])
+
+news_posts = Posts::News.create([
+  {
+    category: categories.sample,
+    user: users.sample
+  },
+  {
+    category: categories.sample,
+    user: users.sample
+  },
+  {
+    category: categories.sample,
+    user: users.sample
+  }
+])
+
+tags = Tag.create([
+  {
+    name: 'foo'
+  },
+  {
+    name: 'bar'
+  },
+  {
+    name: 'baz'
+  }
+])
+
+Post.all.each do |post|
+  post.tags = tags.sample(rand(4))
+end

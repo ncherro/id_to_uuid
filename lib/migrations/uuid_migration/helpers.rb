@@ -23,14 +23,10 @@ module Migrations
         all_models.each do |model|
           table_name = model.table_name
           pk = model.primary_key
-          results = execute <<-SQL
-            SELECT data_type
-            FROM information_schema.columns
-            WHERE table_name = '#{table_name}'
-            AND column_name = '#{pk}'
-          SQL
 
-          if results.first && results.first['data_type'] == 'integer'
+          data_type = get_data_type(table_name, pk)
+
+          if data_type && data_type == 'integer'
             # set up our queries
             sql = []
             unless parent_tables_converted.include?(table_name)
@@ -65,7 +61,7 @@ module Migrations
         all_models.each do |model|
           model.reflect_on_all_associations(:belongs_to).each do |association|
             if association.options[:polymorphic]
-              # 1. convert the polymorphic _id column name to a uuid-/ id-friendly string
+              # convert the polymorphic _id column name to a uuid-/ id-friendly string
               child_table_name = association.active_record.table_name
               fk_id = "#{association.name}_id".to_sym
               fk_type = "#{association.name}_type".to_sym
@@ -85,7 +81,7 @@ module Migrations
                 ALTER COLUMN #{fk_id} SET DATA TYPE character varying(36) USING(NULL)
               SQL
 
-              # 2. get a list of 'has_many's that reference this polymorphic
+              # get a list of 'has_many's that reference this polymorphic
               # association
               pm_parent_associations = []
               all_models.each do |pm_model|
@@ -181,14 +177,9 @@ module Migrations
           table_name = model.table_name
           pk = model.primary_key
 
-          results = execute <<-SQL
-            SELECT data_type
-            FROM information_schema.columns
-            WHERE table_name = '#{table_name}'
-            AND column_name = '#{legacy_prefix}_#{pk}'
-          SQL
+          data_type = get_data_type(table_name, "#{legacy_prefix}_#{pk}")
 
-          if results.first && results.first['data_type'] == 'uuid'
+          if data_type && data_type == 'uuid'
             # TODO: set this up
           end
         end
@@ -199,6 +190,16 @@ module Migrations
         @all_models ||= ActiveRecord::Base.descendants.select do |model|
           model != ActiveRecord::SchemaMigration
         end
+      end
+
+      def get_data_type(table, column)
+        results = execute <<-SQL
+          SELECT data_type
+          FROM information_schema.columns
+          WHERE table_name = '#{table}'
+          AND column_name = '#{column}'
+        SQL
+        results.first && results.first['data_type'] || false
       end
     end
   end
