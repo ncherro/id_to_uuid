@@ -168,7 +168,7 @@ module Migrations
 
       def convert_all_uuids_to_ids(legacy_prefix: 'legacy')
         # until this is set up...
-        raise ActiveRecord::IrreversibleMigration
+        #raise ActiveRecord::IrreversibleMigration
 
         # make sure all classes (models) are loaded in memory
         Rails.application.eager_load!
